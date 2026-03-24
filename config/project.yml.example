@@ -11,7 +11,7 @@ data:
   sample_row_limit: 50000                    # rows used for /eda and /model (safe default)
   date_columns: []                           # e.g. ["order_date", "signup_date"]
 
-mode: supervised   # supervised | segmentation
+mode: supervised   # supervised | segmentation | exploration
 
 supervised:
   target_column: "converted"                # column to predict

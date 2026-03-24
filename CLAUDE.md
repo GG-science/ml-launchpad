@@ -1,7 +1,12 @@
 # ml-launchpad — Claude Co-pilot
 
 ## What this is
-An AutoML consulting starter. You drop a CSV, run commands, get EDA + models + a client-ready report.
+An ML and data science consulting starter. Drop a CSV, run commands, get EDA + models + analysis + client-ready reports.
+
+Supports three modes:
+- **supervised** — predict a target column (churn, conversion, revenue, ad clicks)
+- **segmentation** — find customer groups (RFM, behavioral clusters)
+- **exploration** — open-ended analysis: marketing reporting, funnel analysis, ROAS, attribution, cohorts, ad-hoc questions
 
 ## First time in this repo?
 Check if `config/project.yml` exists. If not, tell the user:
@@ -9,119 +14,63 @@ Check if `config/project.yml` exists. If not, tell the user:
 
 ---
 
-## Commands
+## Available commands
 
-### /setup
-**First-time project configuration.**
+All commands are in `.claude/commands/`. Here's what they do:
 
-Ask the user these questions in order:
-1. "What is this project called?" → `project.name`
-2. "Where is your CSV file?" (default: `data/raw/`) → `data.csv_path`
-3. "What mode? Type **supervised** (predict a target column) or **segmentation** (find customer groups)"
-4. If supervised: "Which column are you trying to predict?" → `supervised.target_column`
-5. "Sample row limit for fast runs? (default: 50000)" → `data.sample_row_limit`
-
-Then:
-- Copy `config/project.yml.example` to `config/project.yml`
-- Fill in the user's answers
-- Say: "Config saved. Run **/eda** to profile your data."
-
----
-
-### /eda [optional: path/to/file.csv]
-**Run exploratory data analysis on a sample.**
-
-Steps:
-1. Load config from `config/project.yml`
-2. Load up to `sample_row_limit` rows from the CSV into DuckDB: `uv run python -c "from src.ingest.csv_loader import load_csv; load_csv()"`
-3. Run the profiler: `uv run python -c "from src.eda.profiler import run_profile; run_profile()"`
-4. Write the report: `uv run python -c "from src.eda.report import write_report; write_report()"`
-5. Tell the user: "EDA complete → outputs/reports/eda_report.md"
-6. Read the report and summarise: top 3 data quality issues, top 3 interesting patterns, recommendation for next step.
+| Command | What it does |
+|---------|-------------|
+| `/setup` | First-time config: name, CSV path, mode, target column |
+| `/eda` | Profile data → summary stats, quality issues, patterns |
+| `/model` | Train AutoGluon (supervised) or KMeans (segmentation) on sample |
+| `/fullrun` | Train on full dataset (requires explicit "yes") |
+| `/analyze` | Ad-hoc analysis: funnels, cohorts, ROAS, attribution, any question |
+| `/report` | Generate client-ready markdown summary |
+| `/promote` | Save model + log to MLflow |
+| `/dashboard` | Launch Streamlit dashboard |
+| `/experiment [name]` | Create isolated git worktree |
 
 ---
 
-### /model
-**Run AutoGluon (supervised) or KMeans (segmentation) on the sample.**
+## Working with data
 
-Steps:
-1. Confirm config exists and data is loaded (if not, run /eda first)
-2. Show the user: "Running on sample ({sample_row_limit} rows). Time limit: {time_limit_seconds}s."
-3. Run: `uv run python -c "from src.models.supervised import run_supervised; run_supervised()"` OR `uv run python -c "from src.models.segmentation import run_segmentation; run_segmentation()"`
-4. Read `outputs/reports/model_results.md` and summarise: best model, top 5 features, key metric.
-5. Say: "Sample run complete. Run **/fullrun** to train on all data, or **/report** to generate the client summary."
+**DuckDB is the data layer.** All data lives in `data/processed/store.duckdb`. Query it freely:
 
----
-
-### /fullrun
-**Train on the full dataset. Requires explicit confirmation.**
-
-Say: "This will run on ALL rows (no sample limit). Type **yes** to confirm."
-Wait for "yes". If anything else, abort.
-
-Then run with full data:
-- Set `sample_row_limit` to None for this run only
-- Same pipeline as /model but with `full_run_time_limit_seconds`
-
----
-
-### /report
-**Generate a client-ready markdown summary.**
-
-Run: `uv run python -c "from src.eda.report import write_client_report; write_client_report()"`
-
-Output: `outputs/reports/client_report.md`
-
-The report should include:
-- Dataset overview (rows, columns, date range)
-- Top data quality findings
-- Model performance (best model, key metric, vs baseline)
-- Top 5 predictive features with plain-English interpretation
-- Recommended next steps (2–3 bullet points)
-
----
-
-### /promote
-**Save model artifact and log to MLflow.**
-
-Run: `uv run python -c "from src.experiments.tracker import promote_model; promote_model()"`
-
-Saves to `outputs/models/` and logs the run to MLflow.
-Say: "Model promoted. View all runs: `uv run mlflow ui --backend-store-uri experiments/mlruns`"
-
----
-
-### /dashboard
-**Launch the Streamlit dashboard.**
-
-Run: `uv run streamlit run src/dashboard/app.py`
-
----
-
-### /experiment [name]
-**Create an isolated git worktree for a new experiment.**
-
-Run:
+```python
+import duckdb
+con = duckdb.connect("data/processed/store.duckdb")
+con.execute("SELECT * FROM main_data LIMIT 10").df()
 ```
-git worktree add experiments/[name] -b experiment/[name]
+
+**Schema registry** — after `/setup`, column metadata is stored in the `schema_registry` table. Use it to understand what's available:
+
+```sql
+SELECT column_name, dtype, null_count, sample_values FROM schema_registry
 ```
-Say: "Worktree created at experiments/[name] on branch experiment/[name]. Work there, then merge what you like back to main."
+
+**For exploration mode** — you're not limited to the pipeline. Use DuckDB SQL directly to answer any question about the data. Common patterns:
+- Funnel: conversion rates between stages
+- Cohort: group by first-purchase month, track retention
+- ROAS: spend vs revenue by channel/campaign
+- RFM: recency × frequency × monetary scoring
+- Attribution: channel contribution to conversions
+- A/B testing: significance tests, confidence intervals
 
 ---
 
 ## Project structure
 ```
-data/raw/        ← drop CSVs here
-data/sample/     ← example dataset (ecommerce.csv)
-src/ingest/      ← CSV → DuckDB
-src/eda/         ← profiler + report writer
-src/models/      ← AutoGluon + clustering
-src/experiments/ ← MLflow tracking
-src/serving/     ← FastAPI (productionalize)
-src/dashboard/   ← Streamlit (visualise)
+data/raw/        ← drop CSVs here (gitignored)
+data/sample/     ← example e-commerce dataset
+src/ingest/      ← CSV → DuckDB + schema registry
+src/eda/         ← profiler + markdown report writer
+src/models/      ← AutoGluon (supervised) + KMeans (segmentation)
+src/experiments/ ← MLflow tracking (fully wired)
+src/serving/     ← FastAPI (/health, /score)
+src/dashboard/   ← Streamlit (3 tabs)
 outputs/reports/ ← generated reports (committed)
 outputs/models/  ← model artifacts (gitignored)
-experiments/     ← MLflow runs + worktrees
+experiments/     ← MLflow runs + git worktrees
 ```
 
 ## Key rules
@@ -130,4 +79,3 @@ experiments/     ← MLflow runs + worktrees
 - **Always sample first** — default is `sample_row_limit` rows
 - **config/project.yml is the source of truth** — read it before every command
 - Tests: `uv run pytest tests/ -v`
-- Run pipeline stages directly: `uv run python -m src.ingest.csv_loader`
