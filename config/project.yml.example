@@ -1,0 +1,32 @@
+# ml-launchpad project config
+# Copy this to config/project.yml and fill in your values.
+# /setup will write this automatically on first run.
+
+project:
+  name: "my-client-project"
+  description: "Brief description of the client and goal"
+
+data:
+  csv_path: "data/raw/your_data.csv"        # path to your CSV
+  sample_row_limit: 50000                    # rows used for /eda and /model (safe default)
+  date_columns: []                           # e.g. ["order_date", "signup_date"]
+
+mode: supervised   # supervised | segmentation
+
+supervised:
+  target_column: "converted"                # column to predict
+  task_type: auto                            # auto | classification | regression
+  time_limit_seconds: 120                   # AutoGluon sample run time limit
+  full_run_time_limit_seconds: 600
+
+segmentation:
+  n_clusters: auto                           # auto (elbow method) | integer
+  features: []                               # leave empty = use all numeric columns
+
+mlflow:
+  experiment_name: "my-client-project"
+  tracking_uri: "experiments/mlruns"
+
+output:
+  reports_dir: "outputs/reports"
+  models_dir: "outputs/models"

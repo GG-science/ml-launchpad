@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run pytest*)",
+      "Bash(uv run python -c*)",
+      "Bash(uv run python -m src.*)",
+      "Bash(uv run mlflow*)",
+      "Bash(uv run streamlit*)",
+      "Bash(uv sync*)",
+      "Bash(git worktree*)",
+      "Bash(git status*)",
+      "Bash(git log*)",
+      "Bash(git diff*)"
+    ],
+    "deny": [
+      "Bash(rm -rf*)",
+      "Bash(git push --force*)"
+    ]
+  }
+}

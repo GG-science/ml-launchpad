@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+.uv/
+
+# Data — never commit raw or processed data
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Experiments — MLflow runs are local
+experiments/*
+!experiments/.gitkeep
+
+# Model artifacts — too large for git
+outputs/models/*
+!outputs/models/.gitkeep
+
+# Reports are committed (consulting deliverables)
+# outputs/reports/ — intentionally NOT gitignored
+
+# Config — project.yml has client-specific data; example is committed
+config/project.yml
+
+# Env
+.env
+*.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

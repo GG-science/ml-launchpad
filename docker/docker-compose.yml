@@ -1,0 +1,48 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../outputs:/app/outputs
+      - ../config:/app/config
+      - ../data/processed:/app/data/processed
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    restart: unless-stopped
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    ports:
+      - "5000:5000"
+    volumes:
+      - ../experiments/mlruns:/mlruns
+    command: >
+      mlflow ui
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri /mlruns
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  dashboard:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8501:8501"
+    volumes:
+      - ../outputs:/app/outputs
+      - ../config:/app/config
+      - ../data/processed:/app/data/processed
+    command: ["streamlit", "run", "src/dashboard/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    deploy:
+      resources:
+        limits:
+          memory: 2G
